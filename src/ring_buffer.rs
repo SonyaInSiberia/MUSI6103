@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct RingBuffer<T> {
     buffer: Vec<T>,
     head: usize,
@@ -79,7 +80,12 @@ impl RingBuffer<f32> {
     // Return the value at at an offset from the current read index.
     // To handle fractional offsets, linearly interpolate between adjacent values. 
     pub fn get_frac(&self, offset: f32) -> f32 {
-        todo!("implement")
+        let index = self.get_read_index();
+        let int_offset = offset.floor() as usize;
+        let frac_offset = offset - int_offset as f32;
+        let value = self.get(index + int_offset);
+        let next_value = self.get(index + int_offset + 1);
+        (1.0 - frac_offset) * value + frac_offset * (next_value - value)
     }
 }
 
