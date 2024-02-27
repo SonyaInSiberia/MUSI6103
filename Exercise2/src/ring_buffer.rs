@@ -6,6 +6,11 @@ pub struct RingBuffer<T> {
 }
 
 impl<T: Copy + Default> RingBuffer<T> {
+/// Initialize the RingBuffer with a given length.
+/// # Example
+/// ```
+/// let rb = RingBuffer::new(10);
+/// ```
     pub fn new(length: usize) -> Self {
         // Create a new RingBuffer with `length` slots and "default" values.
         // Hint: look into `vec!` and the `Default` trait.
@@ -78,7 +83,6 @@ impl<T: Copy + Default> RingBuffer<T> {
         } else {
             self.length_ - self.read_index + self.write_index
         }
-        
     }
 
     pub fn capacity(&self) -> usize {
