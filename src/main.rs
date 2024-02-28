@@ -2,7 +2,7 @@ use std::{fs::File, io::Write};
 
 mod ring_buffer;
 mod vibrato;
-
+mod lfo;
 fn show_info() {
     eprintln!("MUSI-6106 Assignment Executable");
     eprintln!("(c) 2024 Stephen Garrett & Ian Clester");

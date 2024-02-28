@@ -14,6 +14,13 @@ impl<T: Copy + Default> RingBuffer<T> {
         }
     }
 
+    /// Example usage
+    /// ```
+    /// let mut ring_buffer = RingBuffer::<f32>::new(10);
+    /// ring_buffer.push(3.14);
+    /// ring_buffer.reset();
+    /// assert_eq!(ring_buffer.len(), 0);
+    /// ```
     pub fn reset(&mut self) {
         self.buffer.fill(T::default());
         self.head = 0;
@@ -21,10 +28,22 @@ impl<T: Copy + Default> RingBuffer<T> {
     }
 
     // `put` and `peek` write/read without advancing the indices.
+    /// Example usage
+    /// ```
+    /// let mut ring_buffer = RingBuffer::<f32>::new(10);
+    /// ring_buffer.put(3.14);
+    /// assert_eq!(ring_buffer.peek(), 3.14);
+    /// ```
     pub fn put(&mut self, value: T) {
+
         self.buffer[self.head] = value
     }
-
+    /// Example usage
+    /// ```
+    /// let mut ring_buffer = RingBuffer::<f32>::new(10);
+    /// ring_buffer.put(3.14);
+    /// assert_eq!(ring_buffer.peek(), 3.14);
+    /// ```
     pub fn peek(&self) -> T {
         self.buffer[self.tail]
     }
@@ -33,10 +52,22 @@ impl<T: Copy + Default> RingBuffer<T> {
         self.buffer[(self.tail + offset) % self.capacity()]
     }
 
+    //get all the values in the buffer
+    pub fn get_all(&self) -> Vec<T> {
+        let mut values = Vec::new();
+        for i in 0..self.capacity() {
+            values.push(self.get(i));
+        }
+        values
+    }
     // `push` and `pop` write/read and advance the indices.
     pub fn push(&mut self, value: T) {
-        self.buffer[self.head] = value;
-        self.head = (self.head + 1) % self.capacity();
+        if self.buffer.len() == 0 {
+            self.buffer.push(value);
+        } else{
+            self.buffer[self.head] = value;
+            self.head = (self.head + 1) % self.capacity();
+        }
     }
 
     pub fn pop(&mut self) -> T {
@@ -85,7 +116,7 @@ impl RingBuffer<f32> {
         let frac_offset = offset - int_offset as f32;
         let value = self.get(index + int_offset);
         let next_value = self.get(index + int_offset + 1);
-        (1.0 - frac_offset) * value + frac_offset * (next_value - value)
+        value + frac_offset * (next_value - value)
     }
 }
 
@@ -201,5 +232,19 @@ mod tests {
         assert_eq!(ring_buffer.get_read_index(), 3);
 
         // NOTE: Negative indices are also weird, but we can't even pass them due to type checking!
+    }
+
+    #[test]
+    fn test_get_frac() {
+        let capacity = 3;
+        let mut ring_buffer = RingBuffer::<f32>::new(capacity);
+        for i in 0..capacity {
+            ring_buffer.push(i as f32);
+        }
+        assert_eq!(ring_buffer.get_frac(0.0), 0.0);
+        assert_eq!(ring_buffer.get_frac(0.5), 0.5);
+        assert_eq!(ring_buffer.get_frac(1.0), 1.0);
+        assert_eq!(ring_buffer.get_frac(1.5), 1.5);
+        assert_eq!(ring_buffer.get_frac(2.0), 2.0);
     }
 }
