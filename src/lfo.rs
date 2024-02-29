@@ -11,11 +11,10 @@ pub struct LFO {
 
 impl LFO {
     pub fn new(sample_rate_hz: f32, size: usize) -> Self {
-        let mut size_ = size;
-
-        let mut wave_table = RingBuffer::<f32>::new(size_);
-        for i in 0..size_ {
-            let phase = (i as f32 / size_ as f32) * 2.0 * PI;
+        // size determine the resolution of the wave table
+        let mut wave_table = RingBuffer::<f32>::new(size);
+        for i in 0..size {
+            let phase = (i as f32 / size as f32) * 2.0 * PI;
             wave_table.push(phase.sin());
         }
         wave_table.push(0.0);
@@ -60,27 +59,28 @@ impl LFO {
     /// Example usage
     /// ```
     /// let mut lfo = LFO::new(44100.0, 1024);
-    /// lfo.reset();
+    /// lfo.reset(2048);
     /// assert_eq!(lfo.phase_index, 0.0);
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, size: usize) {
         self.phase_index = 0.0;
+        self.wave_table = RingBuffer::<f32>::new(size);
+        // very inefficient, but cannot come up with a better way
+        for i in 0..size {
+            let phase = (i as f32 / size as f32) * 2.0 * PI;
+            self.wave_table.push(phase.sin());
+        }
     }
 
-    pub fn get_table_step(&self) -> f32 {
-        let table_capacity = self.wave_table.capacity() as f32;
-        let phase_increment = self.freq_hz / self.sample_rate_hz;
-        phase_increment * table_capacity
-    }
+    pub fn next_mod(&mut self) -> f32 {
+        let phase_increment = 2.0 * PI * self.freq_hz / self.sample_rate_hz;
 
-    pub fn next_mod(&mut self, table_step: f32) -> f32 {
-        let table_capacity = self.wave_table.capacity() as f32;
-        self.phase_index += table_step;
-        self.phase_index = if self.phase_index > table_capacity {
-            self.phase_index - table_capacity
-        } else {
-            self.phase_index
-        };
-        self.wave_table.get_frac(self.phase_index) * self.amplitude
+        self.phase_index = (self.phase_index + phase_increment) % (2.0 * PI);
+
+        let normalized_phase = self.phase_index / (2.0 * PI);
+
+        let table_index = normalized_phase * self.wave_table.capacity() as f32;
+
+        self.wave_table.get_frac(table_index) * self.amplitude
     }
 }
 
@@ -93,8 +93,7 @@ mod tests {
         let mut lfo = LFO::new(2.0, 4);
         lfo.set_frequency(1.0);
         lfo.set_amplitude(1.0);
-        let table_step = lfo.get_table_step();
-        let val = lfo.next_mod(table_step);
+        let val = lfo.next_mod();
         // Be careful with float comparison
         assert!((val - 0.0).abs() < 0.0001);
     }
@@ -104,8 +103,7 @@ mod tests {
         let mut lfo = LFO::new(5.0, 3);
         lfo.set_frequency(1.0);
         lfo.set_amplitude(1.0);
-        let table_step = lfo.get_table_step();
-        let val = lfo.next_mod(table_step);
+        let val = lfo.next_mod();
         assert!((val - 0.6 * (2.0 * PI / 3.0).sin()).abs() < 0.0001);
     }
 }

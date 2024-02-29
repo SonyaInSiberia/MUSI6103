@@ -1,26 +1,26 @@
-use crate::ring_buffer::RingBuffer;
 use crate::lfo::LFO;
+use crate::ring_buffer::RingBuffer;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    InvalidValue{name: String, value: f32},
+    InvalidValue { name: String, value: f32 },
 }
-/* 
-    Vibrato Effect
-    Implementation borrowed from comb_filter.rs from [https://github.com/manodrum/ase-2024/blob/assignment-1/src/comb_filter.rs]
-    The struct (cnstructor) takes in the following parameters:
-    - sample_rate_hz: f32
-    - delay_secs: f32
-    - width_secs: f32
-    - mod_freq_hz: f32
-    - num_channels: usize
-    The struct has the following methods:
-    - new: creates a new instance of the struct
-    - reset: resets the delay buffer and phase
-    - set_param: sets the parameters of the filter
-    - get_param: gets the parameters of the filter
-    - process: processes the input and writes the output to the output buffer
- */
+/*
+   Vibrato Effect
+   Implementation borrowed from comb_filter.rs from [https://github.com/manodrum/ase-2024/blob/assignment-1/src/comb_filter.rs]
+   The struct (cnstructor) takes in the following parameters:
+   - sample_rate_hz: f32
+   - delay_secs: f32
+   - width_secs: f32
+   - mod_freq_hz: f32
+   - num_channels: usize
+   The struct has the following methods:
+   - new: creates a new instance of the struct
+   - reset: resets the delay buffer and phase
+   - set_param: sets the parameters of the filter
+   - get_param: gets the parameters of the filter
+   - process: processes the input and writes the output to the output buffer
+*/
 pub struct VFilter {
     sample_rate_hz: f32,
     delay_secs: f32,
@@ -53,15 +53,21 @@ impl VFilter {
         let width_samples = (width_secs * sample_rate_hz) as usize;
         let capacity = 1 + delay_samples + width_samples * 2;
         if width_samples > delay_samples {
-            return Err(Error::InvalidValue{name: "width in seconds".to_string(), value: width_secs})
+            return Err(Error::InvalidValue {
+                name: "width in seconds".to_string(),
+                value: width_secs,
+            });
         }
-        if (mod_freq_hz - 0.0).abs() < 1e-6 || mod_freq_hz < 0.0{
-            return Err(Error::InvalidValue{name: "modulation frequency in Hz".to_string(), value: mod_freq_hz})
+        if (mod_freq_hz - 0.0).abs() < 1e-6 || mod_freq_hz < 0.0 {
+            return Err(Error::InvalidValue {
+                name: "modulation frequency in Hz".to_string(),
+                value: mod_freq_hz,
+            });
         }
         let delay_buffer = vec![RingBuffer::<f32>::new(capacity); num_channels];
-        let mut lfo = LFO::new(sample_rate_hz, width_samples);
+        let mut lfo = LFO::new(sample_rate_hz, 1024);
         lfo.set_frequency(mod_freq_hz);
-        lfo.set_amplitude(width_samples as f32); 
+        lfo.set_amplitude(width_samples as f32);
         Ok(Self {
             sample_rate_hz,
             delay_secs,
@@ -85,7 +91,6 @@ impl VFilter {
         for i in 0..self.num_channels {
             self.delay_buffer[i].reset();
         }
-        self.lfo.reset();
     }
 
     /// `set_param` sets the parameters (delay, width, LFO frequency) of the filter
@@ -96,18 +101,32 @@ impl VFilter {
     /// assert_eq!(vibrato.delay_secs, 0.02);
     /// assert_eq!(vibrato.width_secs, 0.01);
     /// assert_eq!(vibrato.mod_freq_hz, 10.0);
-    pub fn set_param(&mut self, delay_secs: f32, width_secs: f32, mod_freq_hz: f32) -> Result<(), Error> {
+    pub fn set_param(
+        &mut self,
+        delay_secs: f32,
+        width_secs: f32,
+        mod_freq_hz: f32,
+    ) -> Result<(), Error> {
         let delay_samples = (delay_secs * self.sample_rate_hz) as usize;
         let width_samples = (width_secs * self.sample_rate_hz) as usize;
         let capacity = 1 + delay_samples + width_samples * 2;
         if width_samples > delay_samples {
-            return Err(Error::InvalidValue{name: "width in seconds".to_string(), value: width_secs})
+            return Err(Error::InvalidValue {
+                name: "width in seconds".to_string(),
+                value: width_secs,
+            });
         }
         if width_samples > delay_samples {
-            return Err(Error::InvalidValue{name: "width in seconds".to_string(), value: width_secs})
+            return Err(Error::InvalidValue {
+                name: "width in seconds".to_string(),
+                value: width_secs,
+            });
         }
-        if (mod_freq_hz - 0.0).abs() < 1e-6 || mod_freq_hz < 0.0{
-            return Err(Error::InvalidValue{name: "modulation frequency in Hz".to_string(), value: mod_freq_hz})
+        if (mod_freq_hz - 0.0).abs() < 1e-6 || mod_freq_hz < 0.0 {
+            return Err(Error::InvalidValue {
+                name: "modulation frequency in Hz".to_string(),
+                value: mod_freq_hz,
+            });
         }
         self.delay_secs = delay_secs;
         self.width_secs = width_secs;
@@ -130,7 +149,7 @@ impl VFilter {
     pub fn get_param(&self) -> (f32, f32, f32) {
         (self.delay_secs, self.width_secs, self.mod_freq_hz)
     }
-    
+
     /// `process` processes the input and writes the output to the output buffer
     /// Example usage
     /// ```
@@ -143,22 +162,19 @@ impl VFilter {
     /// let mut output: &mut [&mut [f32]] = &mut output_slices;
     /// vibrato.process(&input, &mut output);
     pub fn process(&mut self, input: &[&[f32]], output: &mut [&mut [f32]]) {
-        let (_, _, phase_index) = self.lfo.get_params();
-        let table_step = self.lfo.get_table_step();
         for (channel_idx, &channel_input) in input.iter().enumerate() {
-            self.lfo.set_phase(phase_index);
             let channel_delay_buffer = &mut self.delay_buffer[channel_idx];
 
-            for (sample_idx, &sample) in channel_input.iter().enumerate(){
-                let mod_depth_samples = self.lfo.next_mod(table_step);
+            for (sample_idx, &sample) in channel_input.iter().enumerate() {
+                let mod_depth_samples = self.lfo.next_mod();
+
                 let total_delay_samples = self.delay_secs * self.sample_rate_hz + mod_depth_samples;
-                // push the sample first!
+
                 channel_delay_buffer.push(sample);
+
                 let delayed_sample = channel_delay_buffer.get_frac(total_delay_samples);
+
                 output[channel_idx][sample_idx] = delayed_sample;
-                // dbg!(&input[channel_idx], &output[channel_idx]);
-                // dbg!(total_delay_samples);
-                // dbg!(channel_delay_buffer.get_all());
             }
         }
     }
@@ -175,9 +191,15 @@ mod tests {
         let width_secs = 0.005;
         let mod_freq_hz = 5.0;
         let num_channels = 2;
-        let vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
-        let (delay_secs_check, width_secs_check
-        , mod_freq_hz_check) = vibrato.get_param();
+        let vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
+        let (delay_secs_check, width_secs_check, mod_freq_hz_check) = vibrato.get_param();
         assert_eq!(delay_secs_check, 0.01);
         assert_eq!(width_secs_check, 0.005);
         assert_eq!(mod_freq_hz_check, 5.0);
@@ -190,7 +212,14 @@ mod tests {
         let width_secs = 0.005;
         let mod_freq_hz = 5.0;
         let num_channels = 2;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
         let (delay_secs_check_1, width_secs_check_1, mod_freq_hz_check_1) = vibrato.get_param();
         vibrato.set_param(0.02, 0.01, 10.0).unwrap();
         let (delay_secs_check_2, width_secs_check_2, mod_freq_hz_check_2) = vibrato.get_param();
@@ -206,14 +235,22 @@ mod tests {
         let width_secs = 0.005;
         let mod_freq_hz = 5.0;
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
         let input = vec![vec![1.0; 44100]; 1];
         let mut output = vec![vec![0.0; 44100]; 1];
         // Convert Vec<Vec<f32>> to &[&[f32]] for input and &mut [&mut [f32]] for output
         let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
         let input: &[&[f32]] = &input_slices;
 
-        let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut output_slices: Vec<&mut [f32]> =
+            output.iter_mut().map(|v| v.as_mut_slice()).collect();
         let mut output: &mut [&mut [f32]] = &mut output_slices;
         vibrato.process(&input, &mut output);
         vibrato.reset();
@@ -227,14 +264,22 @@ mod tests {
         let width_secs = 0.0; // No modulation
         let mod_freq_hz = 5.0; // Modulation frequency, irrelevant here due to zero width
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
 
-        let input_len = 5; 
+        let input_len = 5;
         let input = vec![vec![1.0; input_len]; num_channels];
         let mut output = vec![vec![0.0; input_len]; num_channels];
 
         let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
-        let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut output_slices: Vec<&mut [f32]> =
+            output.iter_mut().map(|v| v.as_mut_slice()).collect();
 
         vibrato.process(&input_slices, &mut output_slices);
 
@@ -243,9 +288,15 @@ mod tests {
         // dbg!(delay_samples);
         for i in 0..input_len {
             if i < delay_samples {
-                assert_eq!(output[0][i], 0.0, "Output should be 0 for initial delay period");
+                assert_eq!(
+                    output[0][i], 0.0,
+                    "Output should be 0 for initial delay period"
+                );
             } else {
-                assert_eq!(output[0][i], 1.0, "Output should match delayed input after initial delay period");
+                assert_eq!(
+                    output[0][i], 1.0,
+                    "Output should match delayed input after initial delay period"
+                );
             }
         }
     }
@@ -257,7 +308,14 @@ mod tests {
         let width_secs = 0.005; // Example modulation width
         let mod_freq_hz = 5.0; // Example modulation frequency
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
 
         let input_len = 441; // Example input length
         let dc_value = 0.5; // Example DC value for input
@@ -265,7 +323,8 @@ mod tests {
         let mut output = vec![vec![0.0; input_len]; num_channels];
 
         let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
-        let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut output_slices: Vec<&mut [f32]> =
+            output.iter_mut().map(|v| v.as_mut_slice()).collect();
 
         vibrato.process(&input_slices, &mut output_slices);
 
@@ -274,7 +333,10 @@ mod tests {
 
         for channel in output.iter() {
             for &sample in channel.iter().skip(transient_samples) {
-                assert!((sample - dc_value).abs() < 0.001, "Output should remain constant (DC) after initial transient");
+                assert!(
+                    (sample - dc_value).abs() < 0.001,
+                    "Output should remain constant (DC) after initial transient"
+                );
             }
         }
     }
@@ -286,7 +348,14 @@ mod tests {
         let width_secs = 0.005;
         let mod_freq_hz = 5.0;
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
 
         // Test with different input sizes
         for &input_len in &[100, 500, 1000] {
@@ -294,7 +363,8 @@ mod tests {
             let mut output = vec![vec![0.0; input_len]; num_channels];
 
             let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
-            let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+            let mut output_slices: Vec<&mut [f32]> =
+                output.iter_mut().map(|v| v.as_mut_slice()).collect();
 
             vibrato.process(&input_slices, &mut output_slices);
 
@@ -302,7 +372,10 @@ mod tests {
 
             for channel in output.iter() {
                 for &sample in channel.iter().skip(transient_samples) {
-                    assert!((sample - 1.0).abs() < 0.001, "Output should remain constant (DC) after initial transient");
+                    assert!(
+                        (sample - 1.0).abs() < 0.001,
+                        "Output should remain constant (DC) after initial transient"
+                    );
                 }
             }
         }
@@ -315,14 +388,22 @@ mod tests {
         let width_secs = 0.005;
         let mod_freq_hz = 5.0;
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
 
         let input_len = 441;
         let input = vec![vec![0.0; input_len]; num_channels]; // Zero input
         let mut output = vec![vec![0.0; input_len]; num_channels];
 
         let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
-        let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut output_slices: Vec<&mut [f32]> =
+            output.iter_mut().map(|v| v.as_mut_slice()).collect();
 
         vibrato.process(&input_slices, &mut output_slices);
 
@@ -340,7 +421,14 @@ mod tests {
         let width_secs = 0.0; // Example modulation width, should be irrelevant here
         let mod_freq_hz = 5.0; // Example modulation frequency, should also be irrelevant
         let num_channels = 1;
-        let mut vibrato = VFilter::new(sample_rate_hz, delay_secs, width_secs, mod_freq_hz, num_channels).unwrap();
+        let mut vibrato = VFilter::new(
+            sample_rate_hz,
+            delay_secs,
+            width_secs,
+            mod_freq_hz,
+            num_channels,
+        )
+        .unwrap();
 
         // Define a test input signal
         let input_len = 5; // Arbitrary length for test
@@ -350,7 +438,8 @@ mod tests {
 
         // Convert input and output vectors to slices for processing
         let input_slices: Vec<&[f32]> = input.iter().map(|v| v.as_slice()).collect();
-        let mut output_slices: Vec<&mut [f32]> = output.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut output_slices: Vec<&mut [f32]> =
+            output.iter_mut().map(|v| v.as_mut_slice()).collect();
 
         // Process the input signal through the vibrato effect
         vibrato.process(&input_slices, &mut output_slices);
@@ -358,7 +447,10 @@ mod tests {
         // Verify that the output signal matches the input signal exactly
         for (input_channel, output_channel) in input.iter().zip(output.iter()) {
             for (input_sample, output_sample) in input_channel.iter().zip(output_channel.iter()) {
-                assert_eq!(input_sample, output_sample, "The output should match the input exactly when delay is 0.");
+                assert_eq!(
+                    input_sample, output_sample,
+                    "The output should match the input exactly when delay is 0."
+                );
             }
         }
     }
