@@ -71,6 +71,17 @@ impl LFO {
         }
     }
 
+    /// Get the next value from the LFO.
+    /// The phase index is actually calulated based on the phase increment, which is the frequency of the LFO dividev by sample rate.
+    /// The phase increment amount means how much the phase index should be increased in each sample.
+    /// Then the actual modulation is determined by amplitude of the current phase in wavetable and the sample rate.
+    /// Example usage
+    /// ```
+    /// let mut lfo = LFO::new(44100.0, 1024);
+    /// lfo.set_frequency(1.0);
+    /// lfo.set_amplitude(1.0);
+    /// let val = lfo.next_mod();
+    /// ```
     pub fn next_mod(&mut self) -> f32 {
         let phase_increment = 2.0 * PI * self.freq_hz / self.sample_rate_hz;
 
