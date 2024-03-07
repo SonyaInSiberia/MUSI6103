@@ -117,4 +117,12 @@ mod tests {
         let val = lfo.next_mod();
         assert!((val - 0.6 * (2.0 * PI / 3.0).sin()).abs() < 0.0001);
     }
+
+    fn test_wave_table() {
+        let mut lfo = LFO::new(5.0, 3);
+        lfo.set_frequency(1.0);
+        lfo.set_amplitude(1.0);
+        let val = lfo.next_mod();
+        assert!((val - 0.6 * (2.0 * PI / 3.0).sin()).abs() < 0.0001);
+    }
 }

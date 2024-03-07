@@ -67,6 +67,8 @@ impl VFilter {
         let delay_buffer = vec![RingBuffer::<f32>::new(capacity); num_channels];
         let mut lfo = LFO::new(sample_rate_hz, 1024);
         lfo.set_frequency(mod_freq_hz);
+        // I guess it is  ok to have the amplitude as the width in samples since witdth length is set to always
+        // equal to delay in main.rs
         lfo.set_amplitude(width_samples as f32);
         Ok(Self {
             sample_rate_hz,
