@@ -1,6 +1,8 @@
 use nih_plug::prelude::*;
 use std::sync::Arc;
-
+mod comb_filter;
+use comb_filter::CombFilter;
+use comb_filter::FilterType;
 // This is a shortened version of the gain example with most comments removed, check out
 // https://github.com/robbert-vdh/nih-plug/blob/master/plugins/examples/gain/src/lib.rs to get
 // started
@@ -17,6 +19,8 @@ struct AseExampleParams {
     /// gain parameter is stored as linear gain while the values are displayed in decibels.
     #[id = "gain"]
     pub gain: FloatParam,
+    #[id = "comb_filter"]
+    pub comb_filter: CombFilter,
 }
 
 impl Default for AseExample {
@@ -53,6 +57,15 @@ impl Default for AseExampleParams {
             // `.with_step_size(0.1)` function to get internal rounding.
             .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
             .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+            comb_filter: CombFilter::new(
+                FilterType::FIR,
+                FloatRange::Linear {
+                    min: 0.0,
+                    max: 1.0,
+                },
+                44100.0,
+                2,
+            )
         }
     }
 }
@@ -104,6 +117,7 @@ impl Plugin for AseExample {
         _audio_io_layout: &AudioIOLayout,
         _buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
+
     ) -> bool {
         // Resize buffers and perform other potentially expensive initialization operations here.
         // The `reset()` function is always called right after this function. You can remove this
