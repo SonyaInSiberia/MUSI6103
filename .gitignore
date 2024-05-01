@@ -1,1 +1,5 @@
 /target
+.DS_store
+/doc
+*.wav
+notes.md
